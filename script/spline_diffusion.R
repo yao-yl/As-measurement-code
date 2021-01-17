@@ -28,7 +28,9 @@ y2= (y2-	mmy)/scale_x
  knots_x=seq(max(min(x1),min(x2)) ,min(max(x1),max(x2)), length.out =30)
 knots_y=seq(max(min(y1),min(y2)),min(max(y1),max(y2)), by=knots_x[2]-knots_x[1])
 
- 
+d1=data$Depth_m
+d2=data2$Depth_m
+
 
 Bx1 <- t(bSpline(x1, knots=knots_x, degree=3,    Boundary.knots = c(-0.05,1.05),  intercept = FALSE)) 
 Bx2 <- t(bSpline(x2, knots=knots_x, degree=3, Boundary.knots = c(-0.05,1.05),  intercept = FALSE)) 
@@ -153,6 +155,7 @@ logistic_beta_sd=sd(cal_samples$beta)
 c_mean=colMeans(cal_samples$c)
 c_sd=apply(cal_samples$c, 2, sd)
 
+## the model without depth effect, do not run  
 stan_data=list( n1=length(individual_y1),n2=length(kit2),
 								w=9, 
 								individual_y1=log(individual_y1),
@@ -169,9 +172,30 @@ stan_data=list( n1=length(individual_y1),n2=length(kit2),
 					      num_knots_2=3,
 								knots=c(2,3.5,4.5))
 
-fit_spline=stan("spline.stan", data=stan_data, init=ttt,
+fit_spline=stan("spline.stan", data=stan_data, 
 								iter = 2000, chains=4)
 
+## the model with depth effect 
+stan_data=list( n1=length(individual_y1),n2=length(kit2),
+								w=9, 
+								individual_y1=log(individual_y1),
+								z2= kit2,  
+								d1=d1,
+								d2=d2,
+								c=c_mean,
+								logistic_beta=logistic_beta_mean,
+								num_basis=dim(B1_trim)[1],
+								B1=t(B1_trim),
+								B2=t(B2_trim),
+								Bd2=t(Laplacian2_trim),
+								B1_m=sum(B1_trim!=0),
+								B2_m=sum(B2_trim!=0),
+								Bd2_m=sum(Laplacian2_trim!=0),
+								num_knots_2=3,
+								knots=c(2,3.5,4.5))
+
+fit_spline=stan("spline_with_depth.stan", data=stan_data,
+								iter = 2000, chains=4)
 sss=extract(fit_spline)
 
 coef_mat=matrix(NA, 4000,100) # coef before delta
